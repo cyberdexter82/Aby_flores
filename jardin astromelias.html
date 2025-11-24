@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Un Jardín para Ti</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            background: linear-gradient(to bottom, #0f0c29, #302b63, #24243e); /* Cielo nocturno romántico */
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            cursor: crosshair;
+        }
+        canvas {
+            display: block;
+        }
+        #mensaje {
+            position: absolute;
+            bottom: 20px;
+            width: 100%;
+            text-align: center;
+            color: rgba(255, 255, 255, 0.8);
+            font-size: 18px;
+            pointer-events: none;
+            text-shadow: 0 0 10px rgba(255,255,255,0.5);
+        }
+    </style>
+</head>
+<body>
+
+    <div id="mensaje">Toca la pantalla para plantar una Astromelia ✨</div>
+    <canvas id="canvas"></canvas>
+
+<script>
+    const canvas = document.getElementById('canvas');
+    const ctx = canvas.getContext('2d');
+    let width, height;
+    const flores = [];
+
+    // Configuración del tamaño
+    function resize() {
+        width = canvas.width = window.innerWidth;
+        height = canvas.height = window.innerHeight;
+    }
+    window.addEventListener('resize', resize);
+    resize();
+
+    // Paletas de colores típicas de Astromelias
+    // [Color Pétalo Principal, Color Centro/Manchas, Color Fondo Pétalo Interno]
+    const paletas = [
+        ['#FF007F', '#590025', '#FFC0CB'], // Rosa intenso
+        ['#FF8C00', '#4A1C03', '#FFD700'], // Naranja atardecer
+        ['#F8F8FF', '#4B0082', '#FFFACD'], // Blanco cremoso
+        ['#E0115F', '#330000', '#FFA07A']  // Rubí
+    ];
+
+    class Astromelia {
+        constructor(x, y) {
+            this.x = x;
+            this.y = y;
+            this.size = 0;
+            this.maxSize = 40 + Math.random() * 20; // Tamaño variable
+            this.growthSpeed = 0.5 + Math.random() * 0.5;
+            this.angle = Math.random() * Math.PI * 2; // Rotación aleatoria
+            
+            // Elegir color
+            const colorSet = paletas[Math.floor(Math.random() * paletas.length)];
+            this.mainColor = colorSet[0];
+            this.spotColor = colorSet[1];
+            this.innerColor = colorSet[2];
+            
+            // Tallos
+            this.stemPath = [];
+            this.stemHeight = height - y;
+            this.stemCurve = (Math.random() - 0.5) * 100;
+        }
+
+        update() {
+            if (this.size < this.maxSize) {
+                this.size += this.growthSpeed;
+            }
+        }
+
+        draw() {
+            ctx.save();
+            ctx.translate(this.x, this.y);
+            
+            // Dibujar tallo (simple línea verde desvanecida hacia abajo)
+            ctx.beginPath();
+            ctx.moveTo(0, 0);
+            ctx.quadraticCurveTo(this.stemCurve, this.stemHeight / 2, 0, this.stemHeight);
+            ctx.strokeStyle = '#2E8B57';
+            ctx.lineWidth = 2 * (this.size / this.maxSize);
+            ctx.globalAlpha = 0.6;
+            ctx.stroke();
+            
+            // Rotar la flor completa
+            ctx.rotate(this.angle);
+            ctx.globalAlpha = 1;
+
+            // Dibujar 6 pétalos
+            for (let i = 0; i < 6; i++) {
+                ctx.save();
+                ctx.rotate(i * (Math.PI / 3)); // 60 grados por pétalo
+                
+                // Diferenciar pétalos internos (los de arriba) de los externos
+                // En astromelias, 3 suelen tener patrones (internos)
+                let isInner = i % 2 !== 0; 
+                
+                this.drawPetal(isInner);
+                ctx.restore();
+            }
+            
+            // Centro de la flor (pistilos/estambres)
+            this.drawStamens();
+
+            ctx.restore();
+        }
+
+        drawPetal(isInner) {
+            const scale = this.size;
+            
+            ctx.beginPath();
+            ctx.moveTo(0, 0);
+            // Forma del pétalo usando curvas Bezier
+            ctx.bezierCurveTo(scale * 0.5, -scale * 0.2, scale * 0.8, -scale * 1.5, 0, -scale * 2);
+            ctx.bezierCurveTo(-scale * 0.8, -scale * 1.5, -scale * 0.5, -scale * 0.2, 0, 0);
+            
+            if (isInner) {
+                // Pétalos internos: más claros y con manchas
+                ctx.fillStyle = this.innerColor;
+                ctx.fill();
+                
+                // Las "pecas" o manchas de la astromelia
+                ctx.fillStyle = this.spotColor;
+                for(let j=0; j<8; j++) {
+                   let spotX = (Math.random() - 0.5) * scale * 0.6;
+                   let spotY = -scale * (0.5 + Math.random());
+                   ctx.beginPath();
+                   ctx.ellipse(spotX, spotY, scale*0.03, scale*0.08, 0, 0, Math.PI*2);
+                   ctx.fill();
+                }
+            } else {
+                // Pétalos externos: color sólido vibrante
+                ctx.fillStyle = this.mainColor;
+                ctx.fill();
+            }
+        }
+
+        drawStamens() {
+            // Estambres curvados
+            ctx.strokeStyle = '#FFF';
+            ctx.lineWidth = 1;
+            for(let i=0; i<5; i++) {
+                ctx.beginPath();
+                ctx.moveTo(0,0);
+                ctx.quadraticCurveTo(
+                    (Math.random()-0.5)*this.size, 
+                    -this.size*0.5, 
+                    (Math.random()-0.5)*this.size*1.5, 
+                    -this.size*0.8
+                );
+                ctx.stroke();
+            }
+        }
+    }
+
+    // Loop de animación
+    function animate() {
+        ctx.clearRect(0, 0, width, height);
+        
+        // Dibujar todas las flores
+        flores.forEach(flor => {
+            flor.update();
+            flor.draw();
+        });
+        
+        requestAnimationFrame(animate);
+    }
+    animate();
+
+    // Interacción: Crear flor al tocar
+    function plantarFlor(e) {
+        const x = e.clientX || e.touches[0].clientX;
+        const y = e.clientY || e.touches[0].clientY;
+        flores.push(new Astromelia(x, y));
+    }
+
+    window.addEventListener('mousedown', plantarFlor);
+    window.addEventListener('touchstart', plantarFlor);
+
+</script>
+</body>
+</html>
